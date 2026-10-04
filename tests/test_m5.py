@@ -67,3 +67,19 @@ def test_enrich_preserves_original():
     result = enrich_chunks(CHUNKS, methods=["contextual"])
     if result:
         assert result[0].original_text == SAMPLE
+
+
+def test_combined_failure_uses_local_fallback_without_more_api_calls(monkeypatch):
+    import src.m5_enrichment as module
+    calls = []
+
+    def fail(*args, **kwargs):
+        calls.append(1)
+        raise ValueError("invalid JSON")
+
+    monkeypatch.setattr(module, "OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(module, "_chat", fail)
+    result = module._enrich_single_call(SAMPLE, "policy.md")
+    assert len(calls) == 1
+    assert result["context"] == "Trích từ policy.md."
+    assert result["summary"]
